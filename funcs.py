@@ -1,5 +1,6 @@
 import requests
 import json
+import pandas as pd
 
 
 def jprint(obj):
@@ -12,3 +13,8 @@ def getJsonFromApi(url):
     response = requests.get(url)
     response_data = response.json()
     return response_data
+
+def normalizeAndSaveLocal(array, file_name):
+    data_pd = pd.json_normalize(array)
+    data_pd.to_csv(file_name)
+    return data_pd

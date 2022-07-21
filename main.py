@@ -5,20 +5,30 @@ import funcs as f
 
 """
     Data is pulled from government website via API
-        https://data.gov.au/dataset/ds-dga-cc5d888f-5850-47f3-815d-08289b22f5a8/details
         
-        API call (without set limit)
-        https://data.gov.au/data/api/3/action/datastore_search?resource_id=c1a3f0db-89d0-4b84-b82a-d065ca30e7a3
+        Movements data:
+            Source information      https://data.gov.au/dataset/ds-dga-cc5d888f-5850-47f3-815d-08289b22f5a8/details
+            API endpoint            https://data.gov.au/data/api/3/action/datastore_search?resource_id=c1a3f0db-89d0-4b84-b82a-d065ca30e7a3
+            More info               --
+
+        Airport codes data:
+            Source information      https://datahub.io/core/airport-codes
+            API endpoint            https://pkgstore.datahub.io/core/airport-codes/airport-codes_json/data/9ca22195b4c64a562a0a8be8d133e700/airport-codes_json.json
+            More info               https://datahub.io/core/airport-codes/datapackage.json
 """
+url_mvmts = "https://data.gov.au/data/api/3/action/datastore_search?resource_id=c1a3f0db-89d0-4b84-b82a-d065ca30e7a3&limit=32000"
+url_portcodes = "https://pkgstore.datahub.io/core/airport-codes/airport-codes_json/data/9ca22195b4c64a562a0a8be8d133e700/airport-codes_json.json"
 
-# response_data = f.getJsonFromApi("https://data.gov.au/data/api/3/action/datastore_search?resource_id=c1a3f0db-89d0-4b84-b82a-d065ca30e7a3&limit=32000")
+movements_json = f.getJsonFromApi(url_mvmts)
+portcode_json = f.getJsonFromApi(url_portcodes)
 
-# data_pd = pd.json_normalize(response_data['result']['records'])
-# data_pd.to_csv('airport_movement_data.csv')
-
-response_data = pd.read_csv("airport_movement_data.csv")
-print(response_data)
+data_pd = f.normalizeAndSaveLocal(movements_json['result']['records'], 'airport_movement_data.csv')
+r = f.normalizeAndSaveLocal(portcode_json, "airports.csv")
 
 
+# data_pd = pd.read_csv("airport_movement_data.csv")
+# print(data_pd)
 
+
+print(r)
 
