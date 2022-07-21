@@ -1,24 +1,24 @@
-from os import error
-import requests
-import json
+
+from urllib import response
 import pandas as pd
+import funcs as f 
 
-def jprint(obj):
-    # create a formatted string of the Python JSON object
-    text = json.dumps(obj, sort_keys=True, indent=4)
-    print(text)
+"""
+    Data is pulled from government website via API
+        https://data.gov.au/dataset/ds-dga-cc5d888f-5850-47f3-815d-08289b22f5a8/details
+        
+        API call (without set limit)
+        https://data.gov.au/data/api/3/action/datastore_search?resource_id=c1a3f0db-89d0-4b84-b82a-d065ca30e7a3
+"""
 
-response = requests.get("https://data.gov.au/data/api/3/action/datastore_search?resource_id=c1a3f0db-89d0-4b84-b82a-d065ca30e7a3")
-response_data = response.json()
+# response_data = f.getJsonFromApi("https://data.gov.au/data/api/3/action/datastore_search?resource_id=c1a3f0db-89d0-4b84-b82a-d065ca30e7a3&limit=32000")
 
-# jprint(response.json())
+# data_pd = pd.json_normalize(response_data['result']['records'])
+# data_pd.to_csv('airport_movement_data.csv')
 
-# data = pd.json_normalize(
-#     response_data, 
-#     'success',
-#     errors='ignore'
-#     )
+response_data = pd.read_csv("airport_movement_data.csv")
+print(response_data)
 
-# print(data)
+
 
 
