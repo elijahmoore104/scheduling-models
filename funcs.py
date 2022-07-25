@@ -75,26 +75,64 @@ def generateRandomSet(list_of_items, distribution, attempts):
     # out_arr_vals = out_arr["ports"].value_counts().reset_index()
     return out_arr
 
-def randomScenarioAnalysisDuplicateCheck(mvmts_pd, yearly_volume, samples):
+def randomScenarioAnalysisDuplicateCheck(mvmts_pd, yearly_volume_raw, margin_of_error, samples):
     sample_list = []
+    yearly_volume = int(yearly_volume_raw*(1+margin_of_error))
     for i in range(0,samples):
-        gen_port_calls_Out = pd.DataFrame(generateRandomSet(mvmts_pd["AIRPORT"], mvmts_pd["Doc_Out_Pct"], yearly_volume), columns=["ports"])
-        gen_port_calls_In  = pd.DataFrame(generateRandomSet(mvmts_pd["AIRPORT"], mvmts_pd["Doc_In_Pct"], yearly_volume), columns=["ports"])
+        gen_port_calls_Out = pd.DataFrame(generateRandomSet(mvmts_pd["AIRPORT"], mvmts_pd["Dom_Out_Pct"], yearly_volume), columns=["ports"])
+        gen_port_calls_In  = pd.DataFrame(generateRandomSet(mvmts_pd["AIRPORT"], mvmts_pd["Dom_In_Pct"], yearly_volume), columns=["ports"])
         gen_port_calls = gen_port_calls_Out.merge(gen_port_calls_In, left_index=True, right_index=True)
-        calls_amount = len(gen_port_calls)
         duplicates_val = len(gen_port_calls.drop(gen_port_calls[gen_port_calls.ports_x != gen_port_calls.ports_y].index))
-        duplicates_pct = duplicates_val / calls_amount
+        duplicates_pct = duplicates_val / yearly_volume
         sample_list.append([duplicates_val, duplicates_pct*100])
         print(i, ",", round(sample_list[i][1],3), "| ", end ="")
     print()
-    # print(sample_list)
+    print(sample_list)
     
-    sample_pcts = [x[1] for x in sample_list]
+    
     sample_duplicates = [x[0] for x in sample_list]
+    sample_pcts = [x[1] for x in sample_list]
+    
+    sample_duplicates_average = np.average(sample_duplicates)    
+    scenario_volume = yearly_volume - sample_duplicates_average 
 
-    print("scenarios:", samples)
-    print("average duplicates val:", np.average(sample_duplicates))
-    print("calls:", calls_amount)
-    print("average duplicates pct:", np.average(sample_pcts))
+    print("scenarios           :", samples)
+    print("original port calls :", yearly_volume_raw)
+    print("inflated port calls :", yearly_volume)
+    print("average duplicates #:", np.average(sample_duplicates))
+    print("average duplicates %:", np.average(sample_pcts))
+    print("inflated accuracy   :", round(scenario_volume / yearly_volume, 5)*100)
+    print("actual accuracy     :", round( scenario_volume / yearly_volume_raw, 5)*100)
     sample_pd = pd.DataFrame(sample_list)
     return sample_pd
+
+
+def generateMovementsScenario(mvmts_pd, yearly_volume_raw, margin_of_error):
+    yearly_volume_inflated = int(yearly_volume_raw*(1+margin_of_error))
+
+    gen_movements_Out = pd.DataFrame(generateRandomSet(mvmts_pd["AIRPORT"], mvmts_pd["Dom_Out_Pct"], yearly_volume_inflated), columns=["ports"])
+    gen_movements_In  = pd.DataFrame(generateRandomSet(mvmts_pd["AIRPORT"], mvmts_pd["Dom_In_Pct"], yearly_volume_inflated), columns=["ports"])
+    gen_movements_raw = gen_movements_Out.merge(gen_movements_In, left_index=True, right_index=True)
+    duplicates_val = len(gen_movements_raw.drop(gen_movements_raw[gen_movements_raw.ports_x != gen_movements_raw.ports_y].index))
+    duplicates_pct = (duplicates_val / yearly_volume_inflated)*100
+
+    # drop duplicates, to create the final movements data
+    gen_movements = gen_movements_raw.drop(gen_movements_raw[gen_movements_raw.ports_x == gen_movements_raw.ports_y].index)
+    scenario_volume = len(gen_movements)
+    
+    gen_movements.columns = ["Airport_From", "Airport_To"]
+
+    # summarize ports by aggregate movements volume in the period
+    gen_movements_out_summary = gen_movements_Out.value_counts().reset_index()
+    gen_movements_in_summary = gen_movements_In.value_counts().reset_index()
+    gen_movements_out_summary.columns = ["AIPORT", "Dom_Acm_Out_Simulated"]
+    gen_movements_in_summary.columns = ["AIPORT", "Dom_Acm_In_Simulated"]
+    gen_movements_summary = gen_movements_out_summary.merge(gen_movements_in_summary)
+    # gen_movements_values = gen_movements_summary[gen_movements_summary["index"] == "SYDNEY"]
+
+    movements_object = {
+        "data": gen_movements,
+        "summary": gen_movements_summary
+    }
+
+    return movements_object
