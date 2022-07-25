@@ -1,6 +1,7 @@
 import requests
 import json
 import pandas as pd
+import numpy as np
 import plotly.express as px
 
 
@@ -39,14 +40,30 @@ def cleanPortsData(input_pd):
     return input_pd
 
 def cleanMovementsData(input_pd):
-        
     input_pd = input_pd.loc[input_pd["AIRPORT"] != "TOTAL AUSTRALIA"]
     input_pd = input_pd.copy()
 
     input_pd['Doc_In_Pct'] = (input_pd['Dom_Acm_In'] / input_pd.groupby('Year_Ended_December')['Dom_Acm_In'].transform('sum'))
-    input_pd.loc['Doc_Out_Pct'] = input_pd['Dom_Acm_Out'] / input_pd.groupby('Year_Ended_December')['Dom_Acm_Out'].transform('sum')
+    input_pd['Doc_Out_Pct'] = (input_pd['Dom_Acm_Out'] / input_pd.groupby('Year_Ended_December')['Dom_Acm_Out'].transform('sum'))
 
     # Filter to 2019 to start with. A generalized solution will come later
     input_pd = input_pd.loc[input_pd["Year_Ended_December"] == 2019]
-
+    input_pd = input_pd.drop([
+        "Int_Acm_In", 
+        "Int_Acm_Out", 
+        "Int_Acm_Total",
+        "Acm_In", 
+        "Acm_Out",
+        "Acm_Total"
+        ], axis=1)
     return input_pd
+
+def generateRandomSet(list_of_items, distribution, attempts):
+    # test = np.array()
+    out_arr = []
+    for i in range(0, attempts):
+        temp = np.random.choice(list_of_items, p = distribution)
+        out_arr.append(temp)
+
+    # out_arr_vals = out_arr["ports"].value_counts().reset_index()
+    return out_arr

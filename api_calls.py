@@ -3,7 +3,7 @@ import funcs as f
 """
     Data is pulled from government website via API
         Movements data:
-            Source information      https://data.gov.au/dataset/ds-dga-cc5d888f-5850-47f3-815d-08289b22f5a8/details
+            Source information      https://data.gov.au/dataset/ds-dga-cc5d888f-5850-47f3-815d-08289b22f5a8/distribution/dist-dga-c1a3f0db-89d0-4b84-b82a-d065ca30e7a3/details?q=
             API endpoint            https://data.gov.au/data/api/3/action/datastore_search?resource_id=c1a3f0db-89d0-4b84-b82a-d065ca30e7a3
             More info               --
 
