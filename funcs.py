@@ -40,7 +40,7 @@ def cleanPortsData(input_pd):
 
     return input_pd
 
-def cleanMovementsData(input_pd):
+def cleanflightsData(input_pd):
     input_pd = input_pd.loc[input_pd["AIRPORT"] != "TOTAL AUSTRALIA"] #remove totals otherwise sum is doubled
     input_pd = input_pd.copy()
 
@@ -107,32 +107,33 @@ def randomScenarioAnalysisDuplicateCheck(mvmts_pd, yearly_volume_raw, margin_of_
     return sample_pd
 
 
-def generateMovementsScenario(mvmts_pd, yearly_volume_raw, margin_of_error):
+def generateflightsScenario(mvmts_pd, yearly_volume_raw, margin_of_error):
     yearly_volume_inflated = int(yearly_volume_raw*(1+margin_of_error))
 
-    gen_movements_Out = pd.DataFrame(generateRandomSet(mvmts_pd["AIRPORT"], mvmts_pd["Dom_Out_Pct"], yearly_volume_inflated), columns=["ports"])
-    gen_movements_In  = pd.DataFrame(generateRandomSet(mvmts_pd["AIRPORT"], mvmts_pd["Dom_In_Pct"], yearly_volume_inflated), columns=["ports"])
-    gen_movements_raw = gen_movements_Out.merge(gen_movements_In, left_index=True, right_index=True)
-    duplicates_val = len(gen_movements_raw.drop(gen_movements_raw[gen_movements_raw.ports_x != gen_movements_raw.ports_y].index))
+    gen_flights_Out = pd.DataFrame(generateRandomSet(mvmts_pd["AIRPORT"], mvmts_pd["Dom_Out_Pct"], yearly_volume_inflated), columns=["ports"])
+    gen_flights_In  = pd.DataFrame(generateRandomSet(mvmts_pd["AIRPORT"], mvmts_pd["Dom_In_Pct"], yearly_volume_inflated), columns=["ports"])
+    gen_flights_raw = gen_flights_Out.merge(gen_flights_In, left_index=True, right_index=True)
+    duplicates_val = len(gen_flights_raw.drop(gen_flights_raw[gen_flights_raw.ports_x != gen_flights_raw.ports_y].index))
     duplicates_pct = (duplicates_val / yearly_volume_inflated)*100
 
-    # drop duplicates, to create the final movements data
-    gen_movements = gen_movements_raw.drop(gen_movements_raw[gen_movements_raw.ports_x == gen_movements_raw.ports_y].index)
-    scenario_volume = len(gen_movements)
+    # drop duplicates, to create the final flights data
+    gen_flights = gen_flights_raw.drop(gen_flights_raw[gen_flights_raw.ports_x == gen_flights_raw.ports_y].index)
+    scenario_volume = len(gen_flights)
     
-    gen_movements.columns = ["Airport_From", "Airport_To"]
+    gen_flights.columns = ["Airport_From", "Airport_To"]
 
-    # summarize ports by aggregate movements volume in the period
-    gen_movements_out_summary = gen_movements_Out.value_counts().reset_index()
-    gen_movements_in_summary = gen_movements_In.value_counts().reset_index()
-    gen_movements_out_summary.columns = ["AIPORT", "Dom_Acm_Out_Simulated"]
-    gen_movements_in_summary.columns = ["AIPORT", "Dom_Acm_In_Simulated"]
-    gen_movements_summary = gen_movements_out_summary.merge(gen_movements_in_summary)
-    # gen_movements_values = gen_movements_summary[gen_movements_summary["index"] == "SYDNEY"]
+    # summarize ports by aggregate flights volume in the period
+    gen_flights_out_summary = gen_flights_Out.value_counts().reset_index()
+    gen_flights_in_summary = gen_flights_In.value_counts().reset_index()
+    gen_flights_out_summary.columns = ["Airport", "Dom_Acm_Out_Simulated"]
+    gen_flights_in_summary.columns = ["Airport", "Dom_Acm_In_Simulated"]
+    gen_flights_summary = gen_flights_out_summary.merge(gen_flights_in_summary)
+    # gen_flights_values = gen_flights_summary[gen_flights_summary["index"] == "SYDNEY"]
 
-    movements_object = {
-        "data": gen_movements,
-        "summary": gen_movements_summary
+    flights_object = {
+        "test": {"next_level": "output"},
+        "data": gen_flights,
+        "summary": gen_flights_summary
     }
 
-    return movements_object
+    return flights_object
