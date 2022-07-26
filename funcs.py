@@ -34,15 +34,14 @@ def cleanPortsData(input_pd):
         (input_pd.iso_country=="AU"), 
         ["iso_country","coords", "name", "type", "municipality"]].drop_duplicates()
     input_pd = input_pd.fillna("")
-    input_pd["coords.lon"] = input_pd["coords"].str.extract(r'(.*),') # left of commma
-    input_pd["coords.lat"] = input_pd["coords"].str.extract(r',(.*)') # right of commma
+    input_pd["coords-lon"] = input_pd["coords"].str.extract(r'(.*),') # left of commma
+    input_pd["coords-lat"] = input_pd["coords"].str.extract(r',(.*)') # right of commma
     input_pd["display_str"] = input_pd["name"] + " | " + input_pd["municipality"] + " | " + input_pd["type"]
 
     return input_pd
 
 def cleanflightsData(input_pd):
-    input_pd = input_pd.loc[input_pd["AIRPORT"] != "TOTAL AUSTRALIA"] #remove totals otherwise sum is doubled
-    input_pd = input_pd.copy()
+    input_pd = input_pd.loc[input_pd["AIRPORT"] != "TOTAL AUSTRALIA"].copy() #remove totals otherwise sum is doubled
 
     input_pd['Dom_In_Pct'] = (input_pd['Dom_Acm_In'] / input_pd.groupby('Year_Ended_December')['Dom_Acm_In'].transform('sum'))
     input_pd['Dom_Out_Pct'] = (input_pd['Dom_Acm_Out'] / input_pd.groupby('Year_Ended_December')['Dom_Acm_Out'].transform('sum'))
@@ -105,7 +104,6 @@ def randomScenarioAnalysisDuplicateCheck(mvmts_pd, yearly_volume_raw, margin_of_
     print("actual accuracy     :", round( scenario_volume / yearly_volume_raw, 5)*100)
     sample_pd = pd.DataFrame(sample_list)
     return sample_pd
-
 
 def generateflightsScenario(mvmts_pd, yearly_volume_raw, margin_of_error):
     yearly_volume_inflated = int(yearly_volume_raw*(1+margin_of_error))

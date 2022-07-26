@@ -21,5 +21,5 @@ url_portcodes = "https://pkgstore.datahub.io/core/airport-codes/airport-codes_js
 movements_json = f.getJsonFromApi(url_mvmts)
 portcode_json = f.getJsonFromApi(url_portcodes)
 
-pd_movements = f.normalizeAndSaveLocal(movements_json['result']['records'], dir + 'airport-movement-data.csv')
+pd_movements = f.normalizeAndSaveLocal(movements_json["result"]["records"], dir + "airport-movement-data.csv")
 pd_port_codes = f.normalizeAndSaveLocal(portcode_json, dir + "airport-codes.csv")
