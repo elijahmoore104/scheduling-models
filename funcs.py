@@ -1,9 +1,9 @@
-from random import sample
 import requests
 import json
 import pandas as pd
 import numpy as np
 import plotly.express as px
+from itertools import permutations
 
 
 def jprint(obj):
@@ -34,8 +34,10 @@ def cleanPortsData(input_pd):
         (input_pd.iso_country=="AU"), 
         ["iso_country","coords", "name", "type", "municipality"]].drop_duplicates()
     input_pd = input_pd.fillna("")
-    input_pd["coords-lon"] = input_pd["coords"].str.extract(r'(.*),') # left of commma
-    input_pd["coords-lat"] = input_pd["coords"].str.extract(r',(.*)') # right of commma
+    input_pd["coords_lon"] = input_pd["coords"].str.extract(r'(.*),').astype(float) # left of commma
+    input_pd["coords_lat"] = input_pd["coords"].str.extract(r',(.*)').astype(float) # right of commma
+    input_pd['latlong'] = input_pd[['coords_lat', 'coords_lon']].values.tolist()
+    input_pd["municipality"] = input_pd["municipality"].str.upper().str.replace(" ","_")
     input_pd["display_str"] = input_pd["name"] + " | " + input_pd["municipality"] + " | " + input_pd["type"]
 
     return input_pd
@@ -135,3 +137,10 @@ def generateflightsScenario(mvmts_pd, yearly_volume_raw, margin_of_error):
     }
 
     return flights_object
+
+def generateDistancesTable(input_col, col_names):
+    output_pd = pd.DataFrame(list(permutations(input_col, 2))).drop_duplicates()
+    output_pd.columns = col_names
+    output_pd = output_pd.apply(lambda x: x.astype(str).str.upper().str.replace(" ", "_"))
+
+    return output_pd
