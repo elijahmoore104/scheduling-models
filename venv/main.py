@@ -4,7 +4,17 @@ from scheduling import funcs as f
 from scheduling import funcs_cleaning  as cleaning
 # import plotly.express as px
 # import geopy.distance as geo
-# import datetime as dt
+import datetime as dt
+
+# from scheduling.Asset import Asset
+# from scheduling.Trip import Trip
+
+# test = Asset.Asset(name="eli 747", owner="eli airways")
+# trip1 = Trip.Trip(test, dt.datetime(2022,1,10,12), dt.datetime(2022,1,10,12,30), "loc_from", "loc_to")
+
+# print(test.name)
+# print(trip1)
+
 
 # ingest raw data after it gets pulled from the API in separate file
 mvmts_pd = pd.read_csv("data/raw-data/airport-movement-data.csv")
@@ -39,7 +49,7 @@ gen_flights_summary = pd.merge(gen_flights_summary, temp_pd[["Airport", "latlong
 
 gen_flights_summary['final_latlong'] = np.where(gen_flights_summary['latlong_x'].isnull(), gen_flights_summary['latlong_y'], gen_flights_summary['latlong_x'])
 gen_flights_summary = gen_flights_summary.drop(columns=["latlong_x", "latlong_y"]).rename(columns={"final_latlong": "latlong"})
-# gen_flights_summary = gen_flights_summary.dropna()
+gen_flights_summary = gen_flights_summary.dropna()
 # gen_flights_summary = gen_flights_summary[gen_flights_summary["latlong"].isnull()]
 
 # coords_1 = [52.2296756, 21.0122287]
@@ -58,10 +68,10 @@ ports_pd.to_csv("data/clean-data/ports_pd.csv")
 gen_flights.to_csv("data/clean-data/gen_flights.csv")
 gen_flights_summary.to_csv("data/clean-data/gen_flights_summary.csv")
 
-# print(gen_flights_summary["latlong"])
 
-# lat = [x[0] for x in gen_flights_summary.loc[:, "latlong"]]
-# lon = [x[1] for x in gen_flights_summary.loc[:, "latlong"]]
+
+lat = [x[0] for x in gen_flights_summary.loc[:, "latlong"]]
+lon = [x[1] for x in gen_flights_summary.loc[:, "latlong"]]
 
 # f.displayCoordsOnMap(
 #     dataframe=ports_pd,
