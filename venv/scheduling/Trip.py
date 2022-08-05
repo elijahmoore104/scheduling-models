@@ -1,18 +1,20 @@
-from Asset import Asset
-from Location import Location
-from datetime import datetime, timedelta
+# from Asset import Asset
+from scheduling.Location import Location
+from datetime import datetime
 
 class Trip:
-    def __init__(self, asset: Asset, 
+    def __init__(self, asset: str, 
                 date_from: datetime, date_to: datetime, 
                 loc_from: Location, loc_to: Location) -> None:
                     self.asset = asset
                     self.date_from = date_from
                     self.date_to = date_to
+                    self.loc_from = loc_from
+                    self.loc_to = loc_to
 
     def duration(self):
-        """Returns the duration of the trip in hours """
-        return timedelta((self.date_to - self.date_from).hours)
+        """Returns the duration of the trip in minutes"""
+        return (self.date_to - self.date_from).seconds/(60)
 
 
 """

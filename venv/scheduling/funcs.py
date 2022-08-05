@@ -1,3 +1,4 @@
+import decimal
 import requests
 import json
 import pandas as pd
@@ -6,6 +7,8 @@ import plotly.express as px
 from itertools import permutations
 from random import randrange
 import datetime as dt
+
+from scheduling.Location import Location
 
 
 def jprint(obj):
@@ -134,3 +137,44 @@ def generateScheduleTimes(volume, date_lower, date_upper):
     dates_pd = pd.DataFrame(d3)
 
     return dates_pd
+
+
+
+
+def generateScheduleScenarioLocationObj(locations: list, yearly_volume_raw: int, margin_of_error: decimal):
+    yearly_volume_inflated = int(yearly_volume_raw*(1+margin_of_error))
+
+
+    gen_schedule_out = pd.DataFrame(generateRandomSet(mvmts_pd["Airport"], mvmts_pd["Dom_out_Pct"], yearly_volume_inflated), columns=["ports"])
+    gen_schedule_in  = pd.DataFrame(generateRandomSet(mvmts_pd["Airport"], mvmts_pd["Dom_in_Pct"], yearly_volume_inflated), columns=["ports"])
+    gen_schedule_raw = gen_schedule_out.merge(gen_schedule_in, left_index=True, right_index=True)
+    duplicates_val = len(gen_schedule_raw.drop(gen_schedule_raw[gen_schedule_raw.ports_x != gen_schedule_raw.ports_y].index))
+    duplicates_pct = (duplicates_val / yearly_volume_inflated)*100
+
+    # drop duplicates, to create the final schedule data
+    gen_schedule = gen_schedule_raw.drop(gen_schedule_raw[gen_schedule_raw.ports_x == gen_schedule_raw.ports_y].index)
+    scenario_volume = len(gen_schedule)
+    
+    gen_schedule.columns = ["Airport_From", "Airport_To"]
+    
+    # generate a random flight time for the year. Currently a manual workaround for only 2019
+    gen_schedule["Flight_DateTime"] = generateScheduleTimes(yearly_volume_raw, dt.datetime(2019, 1, 1), dt.datetime(2020, 1, 1))
+
+    # summarize ports by aggregate schedule volume in the period
+    gen_schedule_out_summary = gen_schedule_out.value_counts().reset_index()
+    gen_schedule_in_summary = gen_schedule_in.value_counts().reset_index()
+    gen_schedule_out_summary.columns = ["Airport", "Dom_Acm_out_Simulated"]
+    gen_schedule_in_summary.columns = ["Airport", "Dom_Acm_in_Simulated"]
+    # gen_schedule_out_summary["Airport"] = gen_schedule_out_summary["Airport"].str.upper().str.replace(" ", "_")
+    # gen_schedule_in_summary["Airport"] = gen_schedule_in_summary["Airport"].str.upper().str.replace(" ", "_")
+
+    gen_schedule_summary = gen_schedule_out_summary.merge(gen_schedule_in_summary)
+    # gen_schedule_values = gen_schedule_summary[gen_schedule_summary["index"] == "SYDNEY"]
+
+    schedule_object = {
+        "test": {"next_level": "output"},
+        "data": gen_schedule,
+        "summary": gen_schedule_summary
+    }
+
+    return schedule_object

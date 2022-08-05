@@ -1,7 +1,8 @@
 ,type
-10515,small_airport
-11574,closed
-11607,heliport
-11754,seaplane_base
-55074,medium_airport
-55162,large_airport
+0,heliport
+1,small_airport
+4,closed
+36,seaplane_base
+1338,balloonport
+6220,medium_airport
+11927,large_airport
