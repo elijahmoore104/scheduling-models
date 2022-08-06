@@ -46,8 +46,8 @@ def randomScenarioAnalysisDuplicateCheck(mvmts_pd, yearly_volume_raw, margin_of_
     sample_list = []
     yearly_volume = int(yearly_volume_raw*(1+margin_of_error))
     for i in range(0,samples):
-        gen_port_calls_out = pd.DataFrame(generateRandomSet(mvmts_pd["AIRPORT"], mvmts_pd["Dom_out_Pct"], yearly_volume), columns=["ports"])
-        gen_port_calls_in  = pd.DataFrame(generateRandomSet(mvmts_pd["AIRPORT"], mvmts_pd["Dom_in_Pct"], yearly_volume), columns=["ports"])
+        gen_port_calls_out = pd.DataFrame(generateRandomSet(mvmts_pd["Airport"], mvmts_pd["Dom_out_Pct"], yearly_volume), columns=["ports"])
+        gen_port_calls_in  = pd.DataFrame(generateRandomSet(mvmts_pd["Airport"], mvmts_pd["Dom_in_Pct"], yearly_volume), columns=["ports"])
         gen_port_calls = gen_port_calls_out.merge(gen_port_calls_in, left_index=True, right_index=True)
         duplicates_val = len(gen_port_calls.drop(gen_port_calls[gen_port_calls.ports_x != gen_port_calls.ports_y].index))
         duplicates_pct = duplicates_val / yearly_volume
@@ -74,6 +74,7 @@ def randomScenarioAnalysisDuplicateCheck(mvmts_pd, yearly_volume_raw, margin_of_
     return sample_pd
 
 def generateScheduleScenario(mvmts_pd, yearly_volume_raw, margin_of_error):
+    """ margin of error must be a float between 0 and 1 """
     yearly_volume_inflated = int(yearly_volume_raw*(1+margin_of_error))
 
     gen_schedule_out = pd.DataFrame(generateRandomSet(mvmts_pd["Airport"], mvmts_pd["Dom_out_Pct"], yearly_volume_inflated), columns=["ports"])
@@ -96,14 +97,11 @@ def generateScheduleScenario(mvmts_pd, yearly_volume_raw, margin_of_error):
     gen_schedule_in_summary = gen_schedule_in.value_counts().reset_index()
     gen_schedule_out_summary.columns = ["Airport", "Dom_Acm_out_Simulated"]
     gen_schedule_in_summary.columns = ["Airport", "Dom_Acm_in_Simulated"]
-    # gen_schedule_out_summary["Airport"] = gen_schedule_out_summary["Airport"].str.upper().str.replace(" ", "_")
-    # gen_schedule_in_summary["Airport"] = gen_schedule_in_summary["Airport"].str.upper().str.replace(" ", "_")
 
     gen_schedule_summary = gen_schedule_out_summary.merge(gen_schedule_in_summary)
     # gen_schedule_values = gen_schedule_summary[gen_schedule_summary["index"] == "SYDNEY"]
 
     schedule_object = {
-        "test": {"next_level": "output"},
         "data": gen_schedule,
         "summary": gen_schedule_summary
     }

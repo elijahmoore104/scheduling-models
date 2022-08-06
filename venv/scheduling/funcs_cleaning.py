@@ -58,17 +58,23 @@ def cleanScheduleData(input_pd):
     return input_pd
 
 def getLatlongFromLocations(mvmts_pd, ports_pd):
-    # merge ports and flights data together
+    """ merge ports and flights data together """
+
+    # first take municipality and merge
     temp_pd = ports_pd.drop_duplicates(subset=["municipality"]).copy()
     temp_pd["Airport"] = temp_pd["municipality"]
     mvmts_pd_temp = pd.merge(mvmts_pd, temp_pd[["Airport", "coords_lat", "coords_lon"]], how="left", on="Airport")
 
+    # take adjusted name and merge on that
     temp_pd = ports_pd.drop_duplicates(subset=["name_adjusted"]).copy()
     temp_pd["Airport"] = temp_pd["name_adjusted"]
     mvmts_pd_temp = pd.merge(mvmts_pd_temp, temp_pd[["Airport", "coords_lat", "coords_lon"]], how="left", on="Airport")
 
+    # create a new cols: if the municipality merge has data then use it, otherwise use the name_adjusted coords
     mvmts_pd_temp["final_coords_lat"] = np.where(mvmts_pd_temp["coords_lat_x"].isnull(), mvmts_pd_temp["coords_lat_y"], mvmts_pd_temp["coords_lat_x"])
     mvmts_pd_temp["final_coords_lon"] = np.where(mvmts_pd_temp["coords_lon_x"].isnull(), mvmts_pd_temp["coords_lon_y"], mvmts_pd_temp["coords_lon_x"])
+    
+    # drop the merge cols and rename the new cols
     mvmts_pd_temp = mvmts_pd_temp.drop(columns=["coords_lat_x", "coords_lat_y", "coords_lon_x", "coords_lon_y"]).rename(columns={
             "final_coords_lat": "coords_lat",
             "final_coords_lon": "coords_lon"

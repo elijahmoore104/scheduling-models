@@ -27,20 +27,17 @@ mvmts_pd = cleaning.cleanScheduleData(mvmts_pd)
 mvmts_pd = cleaning.getLatlongFromLocations(mvmts_pd, ports_pd)
 distances_pd = f.generateDistancesTable(mvmts_pd["Airport"], ["Airport_From", "Airport_To"])
 
-# print(type(mvmts_pd.loc[8, "coords_lat"]) )
-
 # # uncomment for scenario analysis - demonstrates how many duplicates are present in the generated dataset
-# sample_list = f.randomScenarioAnalysisDuplicateCheck(mvmts_pd, 50000, 0.1, 10)
+# sample_list = f.randomScenarioAnalysisDuplicateCheck(mvmts_pd, 5000, 0.1, 10)
 
-# # using realistic volumes will crash your computer! It's a lot of movments :^)
+# # using realistic volumes will crash your computer! It's a lot of movements :^)
 # yearly_volume_raw = mvmts_pd["Dom_Acm_In"].sum() # 606,565 flights in total
 yearly_volume_raw = 5000
-duplicates_moe = 0.0
+duplicates_moe = 0.1
 
 gen_flights_object = f.generateScheduleScenario(mvmts_pd, yearly_volume_raw, duplicates_moe)
 gen_flights = gen_flights_object["data"]
 gen_flights_summary = gen_flights_object["summary"]
-
 
 # coords_1 = [52.2296756, 21.0122287]
 # coords_2 = [52.406374, 16.9251681]
