@@ -1,6 +1,6 @@
 import pandas as pd
 import numpy as np
-import scheduling
+import geopy.distance as geo
 
 # test = scheduling.Plane("Soarer21", "Elijah", 2)
 
@@ -57,7 +57,7 @@ def cleanScheduleData(input_pd):
 
     return input_pd
 
-def getLatlongFromLocations(mvmts_pd, ports_pd):
+def mergePortsAndScheduleLatLong(mvmts_pd, ports_pd):
     """ merge ports and flights data together """
 
     # first take municipality and merge
@@ -81,8 +81,8 @@ def getLatlongFromLocations(mvmts_pd, ports_pd):
             })
     
     coords_list = {
-        "CHRISTMAS_ISLAND": list([10.4510, 105.6889]),
-        "COCOS_ISLAND": list([12.1880, 96.8293])
+        "CHRISTMAS_ISLAND": list([-10.4510, 105.6889]),
+        "COCOS_ISLAND": list([-12.1880, 96.8293])
     }
 
     # assign latlongs for the leftover ports that are None after the merge    
@@ -95,3 +95,9 @@ def getLatlongFromLocations(mvmts_pd, ports_pd):
 
     return mvmts_pd_temp
 
+def getDistanceFromLatlong(latong_1: tuple, latlong_2: tuple) -> float:
+    """
+        returns the distance between 2 latlong coordinates
+    """
+    value = geo.geodesic(latong_1, latlong_2).km
+    return value

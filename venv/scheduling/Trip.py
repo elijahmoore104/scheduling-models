@@ -1,12 +1,16 @@
 # from Asset import Asset
 from scheduling.Location import Location
+from scheduling.Asset import Asset
 from datetime import datetime
 
 class Trip:
-    def __init__(self, asset: str, 
+    """
+        There can be multiple Assets on a trip, like a plane w/ a baggage car, or a ship with lineboats and shoreside crew
+    """
+    def __init__(self, assets: list[Asset], 
                 date_from: datetime, date_to: datetime, 
                 loc_from: Location, loc_to: Location) -> None:
-                    self.asset = asset
+                    self.assets = assets
                     self.date_from = date_from
                     self.date_to = date_to
                     self.loc_from = loc_from

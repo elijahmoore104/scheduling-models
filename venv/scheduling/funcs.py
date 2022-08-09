@@ -1,4 +1,5 @@
 import decimal
+import sched
 import requests
 import json
 import pandas as pd
@@ -9,6 +10,7 @@ from random import randrange
 import datetime as dt
 
 from scheduling.Location import Location
+from scheduling.Trip import Trip
 
 
 def jprint(obj):
@@ -27,12 +29,15 @@ def normalizeAndSaveLocal(array, file_name):
     data_pd.to_csv(file_name)
     return data_pd
 
-def displayCoordsOnMap(dataframe: pd.DataFrame, coords_lat: str, coords_lon: str, display_str: str, color=["blue"]):
+def displayCoordsOnMap(dataframe: pd.DataFrame, coords_lat: str, coords_lon: str, display_str: str, color=["blue"]) -> None:
     fig = px.scatter_geo(dataframe, lat=coords_lat,lon=coords_lon, hover_name=display_str, color_discrete_sequence=color)
     # fig.update_layout(title = 'Map of Airports', title_x=0.5)
     fig.show()
 
-def generateRandomSet(list_of_items, distribution, attempts):
+def generateRandomSet(list_of_items, distribution, attempts) -> list:
+    """
+        Returns an array of size 'attempts' from 'list_of_items' chosen by 'distribution'
+    """
     # test = np.array()
     out_arr = []
     for i in range(0, attempts):
@@ -42,80 +47,32 @@ def generateRandomSet(list_of_items, distribution, attempts):
     # out_arr_vals = out_arr["ports"].value_counts().reset_index()
     return out_arr
 
-def randomScenarioAnalysisDuplicateCheck(mvmts_pd, yearly_volume_raw, margin_of_error, samples):
-    sample_list = []
-    yearly_volume = int(yearly_volume_raw*(1+margin_of_error))
-    for i in range(0,samples):
-        gen_port_calls_out = pd.DataFrame(generateRandomSet(mvmts_pd["Airport"], mvmts_pd["Dom_out_Pct"], yearly_volume), columns=["ports"])
-        gen_port_calls_in  = pd.DataFrame(generateRandomSet(mvmts_pd["Airport"], mvmts_pd["Dom_in_Pct"], yearly_volume), columns=["ports"])
-        gen_port_calls = gen_port_calls_out.merge(gen_port_calls_in, left_index=True, right_index=True)
-        duplicates_val = len(gen_port_calls.drop(gen_port_calls[gen_port_calls.ports_x != gen_port_calls.ports_y].index))
-        duplicates_pct = duplicates_val / yearly_volume
-        sample_list.append([duplicates_val, duplicates_pct*100])
-        print(i, ",", round(sample_list[i][1],3), "| ", end ="")
-    print()
-    print(sample_list)
+def generateScheduleScenario(locations_list: list[Location], volume: int) -> list[Trip]:
     
-    
-    sample_duplicates = [x[0] for x in sample_list]
-    sample_pcts = [x[1] for x in sample_list]
-    
-    sample_duplicates_average = np.average(sample_duplicates)    
-    scenario_volume = yearly_volume - sample_duplicates_average 
+    airports_list   = [locations_list[x].name for x in locations_list]
+    distr_of_trips  = [locations_list[x].distr_of_trips for x in locations_list]
 
-    print("scenarios           :", samples)
-    print("original port calls :", yearly_volume_raw)
-    print("inflated port calls :", yearly_volume)
-    print("average duplicates #:", np.average(sample_duplicates))
-    print("average duplicates %:", np.average(sample_pcts))
-    print("inflated accuracy   :", round(scenario_volume / yearly_volume, 5)*100)
-    print("actual accuracy     :", round( scenario_volume / yearly_volume_raw, 5)*100)
-    sample_pd = pd.DataFrame(sample_list)
-    return sample_pd
-
-def generateScheduleScenario(mvmts_pd, yearly_volume_raw, margin_of_error):
-    """ margin of error must be a float between 0 and 1 """
-    yearly_volume_inflated = int(yearly_volume_raw*(1+margin_of_error))
-
-    gen_schedule_out = pd.DataFrame(generateRandomSet(mvmts_pd["Airport"], mvmts_pd["Dom_out_Pct"], yearly_volume_inflated), columns=["ports"])
-    gen_schedule_in  = pd.DataFrame(generateRandomSet(mvmts_pd["Airport"], mvmts_pd["Dom_in_Pct"], yearly_volume_inflated), columns=["ports"])
-    gen_schedule_raw = gen_schedule_out.merge(gen_schedule_in, left_index=True, right_index=True)
-    duplicates_val = len(gen_schedule_raw.drop(gen_schedule_raw[gen_schedule_raw.ports_x != gen_schedule_raw.ports_y].index))
-    duplicates_pct = (duplicates_val / yearly_volume_inflated)*100
-
-    # drop duplicates, to create the final schedule data
-    gen_schedule = gen_schedule_raw.drop(gen_schedule_raw[gen_schedule_raw.ports_x == gen_schedule_raw.ports_y].index)
-    scenario_volume = len(gen_schedule)
-    
-    gen_schedule.columns = ["Airport_From", "Airport_To"]
+    trips = generateTripsFromDistribution(airports_list, distr_of_trips, volume)
     
     # generate a random flight time for the year. Currently a manual workaround for only 2019
-    gen_schedule["Flight_DateTime"] = generateScheduleTimes(yearly_volume_raw, dt.datetime(2019, 1, 1), dt.datetime(2020, 1, 1))
+    trip_times = pd.DataFrame(generateScheduleTimes(volume, dt.datetime(2019, 1, 1), dt.datetime(2020, 1, 1)))
+    trips["trip_start"] = trip_times.astype("datetime64[ns]")
+    # sample time used right now - all trips are 4 hours lon7g
+    trips["trip_end"] = trips["trip_start"] + dt.timedelta(minutes=60*4) 
 
-    # summarize ports by aggregate schedule volume in the period
-    gen_schedule_out_summary = gen_schedule_out.value_counts().reset_index()
-    gen_schedule_in_summary = gen_schedule_in.value_counts().reset_index()
-    gen_schedule_out_summary.columns = ["Airport", "Dom_Acm_out_Simulated"]
-    gen_schedule_in_summary.columns = ["Airport", "Dom_Acm_in_Simulated"]
+    trips.sort_values(by=["trip_start"], inplace=True)
+    trips.reset_index(inplace=True, drop=True)
 
-    gen_schedule_summary = gen_schedule_out_summary.merge(gen_schedule_in_summary)
-    # gen_schedule_values = gen_schedule_summary[gen_schedule_summary["index"] == "SYDNEY"]
+    return trips
 
-    schedule_object = {
-        "data": gen_schedule,
-        "summary": gen_schedule_summary
-    }
-
-    return schedule_object
-
-def generateDistancesTable(input_col, col_names):
+def generateDistancesTable(input_col, col_names) -> pd.DataFrame:
     output_pd = pd.DataFrame(list(permutations(input_col, 2))).drop_duplicates()
     output_pd.columns = col_names
     output_pd = output_pd.apply(lambda x: x.astype(str).str.upper().str.replace(" ", "_"))
 
     return output_pd
 
-def generateScheduleTimes(volume, date_lower, date_upper):
+def generateScheduleTimes(volume, date_lower, date_upper) -> list:
     # d1 = dt.datetime(2019, 1, 1)
     # d2 = dt.datetime(2020, 1, 1)
 
@@ -132,47 +89,20 @@ def generateScheduleTimes(volume, date_lower, date_upper):
         temp_date = d1 + dt.timedelta(days=random_days)
         temp_date = temp_date + dt.timedelta(minutes = 30*random_minutes)
         d3.append(temp_date)
-    dates_pd = pd.DataFrame(d3)
+    # dates_pd = pd.DataFrame(d3)
 
-    return dates_pd
+    return d3
 
+def generateTripsFromDistribution(airports_list: list, distr_of_trips: list, volume: int) -> pd.DataFrame:
+    trips = []
+    while len(trips) < volume:
+        temp_trip = [
+            generateRandomSet(airports_list, [x[0] for x in distr_of_trips], 1)[0], 
+            generateRandomSet(airports_list, [x[1] for x in distr_of_trips], 1)[0]
+            ]
+        if temp_trip[0] != temp_trip[1]:
+            trips.append(temp_trip)
+        # print(temp_trip)
+    trips = pd.DataFrame(trips, columns={"location_from", "location_to"})
+    return trips
 
-
-
-def generateScheduleScenarioLocationObj(locations: list, yearly_volume_raw: int, margin_of_error: decimal):
-    yearly_volume_inflated = int(yearly_volume_raw*(1+margin_of_error))
-
-
-    gen_schedule_out = pd.DataFrame(generateRandomSet(mvmts_pd["Airport"], mvmts_pd["Dom_out_Pct"], yearly_volume_inflated), columns=["ports"])
-    gen_schedule_in  = pd.DataFrame(generateRandomSet(mvmts_pd["Airport"], mvmts_pd["Dom_in_Pct"], yearly_volume_inflated), columns=["ports"])
-    gen_schedule_raw = gen_schedule_out.merge(gen_schedule_in, left_index=True, right_index=True)
-    duplicates_val = len(gen_schedule_raw.drop(gen_schedule_raw[gen_schedule_raw.ports_x != gen_schedule_raw.ports_y].index))
-    duplicates_pct = (duplicates_val / yearly_volume_inflated)*100
-
-    # drop duplicates, to create the final schedule data
-    gen_schedule = gen_schedule_raw.drop(gen_schedule_raw[gen_schedule_raw.ports_x == gen_schedule_raw.ports_y].index)
-    scenario_volume = len(gen_schedule)
-    
-    gen_schedule.columns = ["Airport_From", "Airport_To"]
-    
-    # generate a random flight time for the year. Currently a manual workaround for only 2019
-    gen_schedule["Flight_DateTime"] = generateScheduleTimes(yearly_volume_raw, dt.datetime(2019, 1, 1), dt.datetime(2020, 1, 1))
-
-    # summarize ports by aggregate schedule volume in the period
-    gen_schedule_out_summary = gen_schedule_out.value_counts().reset_index()
-    gen_schedule_in_summary = gen_schedule_in.value_counts().reset_index()
-    gen_schedule_out_summary.columns = ["Airport", "Dom_Acm_out_Simulated"]
-    gen_schedule_in_summary.columns = ["Airport", "Dom_Acm_in_Simulated"]
-    # gen_schedule_out_summary["Airport"] = gen_schedule_out_summary["Airport"].str.upper().str.replace(" ", "_")
-    # gen_schedule_in_summary["Airport"] = gen_schedule_in_summary["Airport"].str.upper().str.replace(" ", "_")
-
-    gen_schedule_summary = gen_schedule_out_summary.merge(gen_schedule_in_summary)
-    # gen_schedule_values = gen_schedule_summary[gen_schedule_summary["index"] == "SYDNEY"]
-
-    schedule_object = {
-        "test": {"next_level": "output"},
-        "data": gen_schedule,
-        "summary": gen_schedule_summary
-    }
-
-    return schedule_object
