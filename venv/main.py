@@ -23,6 +23,21 @@ from scheduling.Location import Location
     3. Allocate random start time for the flight
     4. Append all flight locations w/ flight id as an object to a schedule
     5. Index the distances table to populate time stamps for the flight (taxi, take off, flight, landing, taxi
+
+    Use composition rather than inheritance
+    E.g., Flight has a Trip as overall trip to final destination (Departure to Arrival)
+    Within the Trip, you have a list of Flights
+
+    Trip: Departure to Arrival
+    Flight: list of movements within the trip (location_from to location_to)
+
+    E.g., Trip.Flight[0].duration()
+
+    Journey has multiple...
+    Trip which has multiple...
+    Personnel
+
+
 """
 
 # ingest raw data after it gets pulled from the API in separate file
@@ -49,20 +64,19 @@ for i in range(len(mvmts_pd)):
 
 # # using realistic volumes will crash your computer! It's a lot of movements :^)
 # flight_count = mvmts_pd["Dom_Acm_In"].sum() # 606,565 flights in total
-flight_count = 5
+flight_count = 1000
 
-gen_flights = f.generateScheduleScenario(locations_list = locations, volume = flight_count)
+gen_flights = f.generateScheduleScenario(locations_list = list(locations.values()), volume = flight_count)
 
-print(gen_flights)
+# print(gen_flights.loc[0, 'trip_obj'].trip_code)
 
-print(cleaning.getDistanceFromLatlong(locations["SYDNEY"].latlong, locations["BRISBANE"].latlong))
 
 port_types.to_csv("data/clean-data/port_types.csv")
 distances_pd.to_csv("data/clean-data/distances_pd.csv")
 mvmts_pd.to_csv("data/clean-data/mvmts_pd.csv")
 ports_pd.to_csv("data/clean-data/ports_pd.csv")
 gen_flights.to_csv("data/clean-data/gen_flights.csv")
-# gen_flights_summary.to_csv("data/clean-data/gen_flights_summary.csv")
+
 
 # f.displayCoordsOnMap(
 #     dataframe   = ports_pd,

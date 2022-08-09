@@ -1,5 +1,3 @@
-import decimal
-import sched
 import requests
 import json
 import pandas as pd
@@ -8,8 +6,10 @@ import plotly.express as px
 from itertools import permutations
 from random import randrange
 import datetime as dt
+import geopy.distance as geo
 
 from scheduling.Location import Location
+from scheduling.Asset import Asset
 from scheduling.Trip import Trip
 
 
@@ -29,12 +29,12 @@ def normalizeAndSaveLocal(array, file_name):
     data_pd.to_csv(file_name)
     return data_pd
 
-def displayCoordsOnMap(dataframe: pd.DataFrame, coords_lat: str, coords_lon: str, display_str: str, color=["blue"]) -> None:
+def displayCoordsOnMap(dataframe: pd.DataFrame, coords_lat: list[tuple], coords_lon: list[tuple], display_str: str, color=["blue"]) -> None:
     fig = px.scatter_geo(dataframe, lat=coords_lat,lon=coords_lon, hover_name=display_str, color_discrete_sequence=color)
     # fig.update_layout(title = 'Map of Airports', title_x=0.5)
     fig.show()
 
-def generateRandomSet(list_of_items, distribution, attempts) -> list:
+def _generateRandomSet(list_of_items: list, distribution: list[float], attempts: int) -> list:
     """
         Returns an array of size 'attempts' from 'list_of_items' chosen by 'distribution'
     """
@@ -49,19 +49,31 @@ def generateRandomSet(list_of_items, distribution, attempts) -> list:
 
 def generateScheduleScenario(locations_list: list[Location], volume: int) -> list[Trip]:
     
-    airports_list   = [locations_list[x].name for x in locations_list]
-    distr_of_trips  = [locations_list[x].distr_of_trips for x in locations_list]
+    distr_of_trips  = [x.distr_of_trips for x in locations_list]
+    trips = _generateTripsFromDistribution(locations_list, distr_of_trips, volume)
+    average_flight_speed = 650 # 650 km/hr, should be updated to a more accurate time based on specific trip specs later on
 
-    trips = generateTripsFromDistribution(airports_list, distr_of_trips, volume)
-    
     # generate a random flight time for the year. Currently a manual workaround for only 2019
-    trip_times = pd.DataFrame(generateScheduleTimes(volume, dt.datetime(2019, 1, 1), dt.datetime(2020, 1, 1)))
+    trip_times = pd.DataFrame(_generateScheduleTimes(volume, dt.datetime(2019, 1, 1), dt.datetime(2020, 1, 1)))
     trips["trip_start"] = trip_times.astype("datetime64[ns]")
-    # sample time used right now - all trips are 4 hours lon7g
-    trips["trip_end"] = trips["trip_start"] + dt.timedelta(minutes=60*4) 
-
     trips.sort_values(by=["trip_start"], inplace=True)
     trips.reset_index(inplace=True, drop=True)
+
+    for i in range(len(trips)):
+        trips.loc[i, "location_from"] = trips.loc[i, "obj_from"].name
+        trips.loc[i, "location_to"] = trips.loc[i, "obj_to"].name
+        trips.loc[i, "distance_kms"] = getDistanceFromLatlong(trips.loc[i, "obj_from"].latlong, trips.loc[i, "obj_to"].latlong)
+        
+        # travel time, rounded to nearest 15m increment
+        travel_time = round(trips.loc[i, "distance_kms"] / average_flight_speed *4)/4
+        trips.loc[i,"trip_end"] = trips.loc[i,"trip_start"] + dt.timedelta(hours=travel_time) 
+
+        trips.loc[i, "trip_obj"] = Trip(
+            Asset(name="(temp)"),
+            trips.loc[i, "trip_start"], trips.loc[i, "trip_end"], 
+            trips.loc[i, "obj_from"], trips.loc[i, "obj_to"]
+        )
+        trips.loc[i, 'trip_code'] = trips.loc[i, "trip_obj"].trip_code
 
     return trips
 
@@ -72,7 +84,7 @@ def generateDistancesTable(input_col, col_names) -> pd.DataFrame:
 
     return output_pd
 
-def generateScheduleTimes(volume, date_lower, date_upper) -> list:
+def _generateScheduleTimes(volume, date_lower, date_upper) -> list[dt.datetime]:
     # d1 = dt.datetime(2019, 1, 1)
     # d2 = dt.datetime(2020, 1, 1)
 
@@ -93,16 +105,22 @@ def generateScheduleTimes(volume, date_lower, date_upper) -> list:
 
     return d3
 
-def generateTripsFromDistribution(airports_list: list, distr_of_trips: list, volume: int) -> pd.DataFrame:
+def _generateTripsFromDistribution(locations_list: list[Location], distr_of_trips: list[tuple], volume: int) -> pd.DataFrame:
     trips = []
+    
     while len(trips) < volume:
         temp_trip = [
-            generateRandomSet(airports_list, [x[0] for x in distr_of_trips], 1)[0], 
-            generateRandomSet(airports_list, [x[1] for x in distr_of_trips], 1)[0]
+            _generateRandomSet(locations_list, [x[0] for x in distr_of_trips], 1)[0], 
+            _generateRandomSet(locations_list, [x[1] for x in distr_of_trips], 1)[0]
             ]
         if temp_trip[0] != temp_trip[1]:
             trips.append(temp_trip)
-        # print(temp_trip)
-    trips = pd.DataFrame(trips, columns={"location_from", "location_to"})
+    trips = pd.DataFrame(trips, columns={"obj_from", "obj_to"})
     return trips
 
+def getDistanceFromLatlong(latong_1: tuple, latlong_2: tuple) -> float:
+    """
+        returns the distance between 2 latlong coordinates
+    """
+    value = geo.geodesic(latong_1, latlong_2).km
+    return value
